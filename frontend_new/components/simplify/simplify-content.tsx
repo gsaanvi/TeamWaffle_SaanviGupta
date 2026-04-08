@@ -19,54 +19,13 @@ import {
 } from "lucide-react"
 
 type RiskLevel = "high" | "medium" | "low"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
 
 interface RiskClause {
   id: string
-  snippet: string
+  clause: string
   explanation: string
-  riskLevel: RiskLevel
-  riskType: "liability" | "payment" | "duration" | "ambiguity"
-}
-
-const sampleAnalysis = {
-  summary: `This is a standard confidentiality agreement (NDA) establishing rules for sharing sensitive business information between two parties. The Disclosing Party will share proprietary information with the Receiving Party for the purpose of evaluating a potential business relationship. Both parties are bound by mutual obligations outlined in the following sections.`,
-  clauses: [
-    {
-      id: "1",
-      snippet: `"...all costs, damages, and expenses including reasonable attorney's fees arising from any breach..."`,
-      explanation: `This clause makes you responsible for ALL legal costs if you accidentally breach the agreement, even for minor violations. This is a one-sided liability clause that could be financially significant.`,
-      riskLevel: "high" as RiskLevel,
-      riskType: "liability" as const,
-    },
-    {
-      id: "2",
-      snippet: `"...the term shall be perpetual unless otherwise agreed in writing..."`,
-      explanation: `The agreement has no end date. You would be bound by these confidentiality obligations indefinitely. Most NDAs have a 2-5 year term limit.`,
-      riskLevel: "high" as RiskLevel,
-      riskType: "duration" as const,
-    },
-    {
-      id: "3",
-      snippet: `"...Confidential Information shall include, but not be limited to..."`,
-      explanation: `The definition of confidential information is very broad. The phrase "but not be limited to" means almost anything could be considered confidential.`,
-      riskLevel: "medium" as RiskLevel,
-      riskType: "ambiguity" as const,
-    },
-    {
-      id: "4",
-      snippet: `"...payment terms shall be net-30 from invoice date..."`,
-      explanation: `Standard payment terms. You have 30 days to pay from when you receive an invoice.`,
-      riskLevel: "low" as RiskLevel,
-      riskType: "payment" as const,
-    },
-    {
-      id: "5",
-      snippet: `"...governed by the laws of the State of Delaware..."`,
-      explanation: `Delaware law will apply. This is a common and generally neutral jurisdiction for business contracts.`,
-      riskLevel: "low" as RiskLevel,
-      riskType: "liability" as const,
-    },
-  ],
+  level: RiskLevel
 }
 
 const riskConfig = {
@@ -96,33 +55,72 @@ const riskConfig = {
   },
 }
 
-const riskTypeConfig = {
-  liability: { icon: Scale, label: "Liability" },
-  payment: { icon: DollarSign, label: "Payment" },
-  duration: { icon: Clock, label: "Duration" },
-  ambiguity: { icon: FileWarning, label: "Ambiguity" },
-}
-
 export function SimplifyContent() {
   const [inputText, setInputText] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [hasResults, setHasResults] = useState(false)
+  const [summary, setSummary] = useState("")
+  const [risks, setRisks] = useState<RiskClause[]>([])
   const [expandedClauses, setExpandedClauses] = useState<Set<string>>(new Set())
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState("")
 
   const handleAnalyze = async () => {
     if (!inputText.trim()) return
 
     setIsAnalyzing(true)
-    setHasResults(false)
-    
-    // Simulate API processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    
-    setIsAnalyzing(false)
-    setHasResults(true)
-    // Expand high-risk clauses by default
-    setExpandedClauses(new Set(["1", "2"]))
+    setError("")
+    setSummary("")
+    setRisks([])
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/simplify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: inputText }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to analyze document.")
+      }
+
+      const nextSummary = typeof payload.summary === "string" ? payload.summary : ""
+      const nextRisks = Array.isArray(payload.risks)
+        ? payload.risks
+            .filter(
+              (risk: { clause?: string; level?: string; explanation?: string }) =>
+                typeof risk?.clause === "string" &&
+                typeof risk?.explanation === "string" &&
+                (risk?.level === "high" || risk?.level === "medium" || risk?.level === "low")
+            )
+            .map(
+              (risk: { clause: string; level: RiskLevel; explanation: string }, index: number) => ({
+                id: String(index + 1),
+                clause: risk.clause,
+                level: risk.level,
+                explanation: risk.explanation,
+              })
+            )
+        : []
+
+      setSummary(nextSummary)
+      setRisks(nextRisks)
+      setExpandedClauses(
+        new Set(
+          nextRisks
+            .filter((risk: RiskClause) => risk.level === "high")
+            .map((risk: RiskClause) => risk.id)
+        )
+      )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again."
+      setError(message)
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const toggleClause = (id: string) => {
@@ -136,8 +134,10 @@ export function SimplifyContent() {
   }
 
   const handleCopy = () => {
-    const text = `Summary:\n${sampleAnalysis.summary}\n\nRisk Analysis:\n${sampleAnalysis.clauses
-      .map((c) => `[${riskConfig[c.riskLevel].label}] ${c.snippet}\n${c.explanation}`)
+    if (!summary && risks.length === 0) return
+
+    const text = `Summary:\n${summary}\n\nRisk Analysis:\n${risks
+      .map((c) => `[${riskConfig[c.level].label}] ${c.clause}\n${c.explanation}`)
       .join("\n\n")}`
     navigator.clipboard.writeText(text)
     setCopied(true)
@@ -145,10 +145,12 @@ export function SimplifyContent() {
   }
 
   const riskCounts = {
-    high: sampleAnalysis.clauses.filter((c) => c.riskLevel === "high").length,
-    medium: sampleAnalysis.clauses.filter((c) => c.riskLevel === "medium").length,
-    low: sampleAnalysis.clauses.filter((c) => c.riskLevel === "low").length,
+    high: risks.filter((c) => c.level === "high").length,
+    medium: risks.filter((c) => c.level === "medium").length,
+    low: risks.filter((c) => c.level === "low").length,
   }
+
+  const hasResults = summary.trim().length > 0 || risks.length > 0
 
   return (
     <div className="h-full">
@@ -200,6 +202,7 @@ export function SimplifyContent() {
                 </>
               )}
             </Button>
+            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
           </div>
         </div>
 
@@ -256,9 +259,7 @@ export function SimplifyContent() {
                     <h3 className="font-semibold text-foreground">Plain-English Summary</h3>
                   </div>
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-[15px] leading-relaxed text-foreground/90">
-                      {sampleAnalysis.summary}
-                    </p>
+                    <p className="text-[15px] leading-relaxed text-foreground/90">{summary}</p>
                   </div>
                 </div>
 
@@ -285,11 +286,9 @@ export function SimplifyContent() {
                 <div>
                   <h3 className="font-semibold text-foreground mb-3">Flagged Clauses</h3>
                   <div className="space-y-3">
-                    {sampleAnalysis.clauses.map((clause) => {
-                      const config = riskConfig[clause.riskLevel]
-                      const typeConfig = riskTypeConfig[clause.riskType]
+                    {risks.map((clause) => {
+                      const config = riskConfig[clause.level]
                       const RiskIcon = config.icon
-                      const TypeIcon = typeConfig.icon
                       const isExpanded = expandedClauses.has(clause.id)
 
                       return (
@@ -307,13 +306,9 @@ export function SimplifyContent() {
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded ${config.badgeBg} ${config.textColor}`}>
                                   {config.label}
                                 </span>
-                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <TypeIcon className="h-3 w-3" />
-                                  {typeConfig.label}
-                                </span>
                               </div>
                               <p className="text-sm text-foreground/80 font-mono leading-relaxed line-clamp-2">
-                                {clause.snippet}
+                                {clause.clause}
                               </p>
                             </div>
                             <div className="shrink-0 mt-0.5">

@@ -45,6 +45,16 @@ export function HeroSection() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
+          <p
+            className="mb-5 text-base font-semibold tracking-widest sm:text-lg animate-in fade-in slide-in-from-bottom-4 duration-700"
+            style={{
+              color: "#F5C56B",
+              opacity: 0.88,
+              textShadow: "0 0 14px rgba(245, 197, 107, 0.28)",
+            }}
+          >
+            LAWFFLE
+          </p>
           {/* Headline with fade-in animation */}
           <h1 
             className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl animate-in fade-in slide-in-from-bottom-4 duration-700"

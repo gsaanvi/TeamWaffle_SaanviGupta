@@ -8,9 +8,6 @@ import {
   LayoutDashboard,
   FileText,
   BookOpen,
-  History,
-  Settings,
-  HelpCircle,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -31,24 +28,6 @@ const mainNavItems = [
     href: "/simplify",
     label: "Simplify Text",
     icon: BookOpen,
-  },
-  {
-    href: "/history",
-    label: "History",
-    icon: History,
-  },
-]
-
-const bottomNavItems = [
-  {
-    href: "#",
-    label: "Settings",
-    icon: Settings,
-  },
-  {
-    href: "#",
-    label: "Help & Support",
-    icon: HelpCircle,
   },
 ]
 
@@ -106,28 +85,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      {/* Bottom Navigation */}
-      <div className="border-t border-border/50 p-3 space-y-1">
-        {bottomNavItems.map((item) => {
-          const Icon = item.icon
-
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground",
-                collapsed && "justify-center px-2"
-              )}
-              title={collapsed ? item.label : undefined}
-            >
-              <Icon className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          )
-        })}
-      </div>
     </aside>
   )
 }
