@@ -9,7 +9,9 @@ const PORT = 5000;
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
   })
 );
 app.use(express.json());
@@ -82,6 +84,12 @@ function safeParseJsonFromText(text) {
     throw new Error("Claude response was not valid JSON.");
   }
 }
+
+app.get("/", (_req, res) => {
+  return res.json({
+    message: "Lawffle backend is running",
+  });
+});
 
 app.post("/api/generate", async (req, res) => {
   try {
