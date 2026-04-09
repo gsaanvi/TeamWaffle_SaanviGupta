@@ -83,5 +83,5 @@ Lawffle makes legal tools more accessible to everyday users by removing complexi
 ### Deployed app link :
 🔗 https://lawffle.vercel.app/
 
-Presentation: [Link]
+Presentation: https://docs.google.com/presentation/d/1q4qPvjpL_NtFMX9kuc0_g27-CMsA9ydp/edit?usp=drive_link&ouid=110662483269494567939&rtpof=true&sd=true
 
