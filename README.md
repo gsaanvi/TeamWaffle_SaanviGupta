@@ -21,12 +21,6 @@ Web Development
 
 [05 / AI-Powered Legal Document Automation Platform]
 
----
-
-### Team Leader
-
-Name: Saanvi Gupta
-Phone: 91+ 9696450335
 
 ---
 
